@@ -285,17 +285,17 @@ main(){
         return 1
     fi
 
-    #install_docker
-    #install_node
-    #install_python
-    #install_java
-    #install_rust
+    install_docker
+    install_node
+    install_python
+    install_java
+    install_rust
 
     install_docker_files
-    #install_tmux_sessions
+    install_tmux_sessions
 
     # Always this last
-    #install_dotfiles
+    install_dotfiles
 
     source ~/.bashrc
 }
