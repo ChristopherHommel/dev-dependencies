@@ -67,13 +67,15 @@ parse_args(){
 main() {
     local current_dir=${PWD}
 
-    mkdir -p "tmux-sessions"
+    rm -rf "${PWD}/tmux_sessions/repo"
+    mkdir -p "${PWD}/tmux_sessions/repo"
+
+
+    cd "${PWD}/tmux_sessions/repo"
+
+    git clone https://github.com/ChristopherHommel/tmux-sessions.git
 
     cd tmux-sessions
-
-    rm -rf ./*
-
-    git clone https://github.com/ChristopherHommel/tmux-sessions.git .
 
     chmod +x ./install.sh
 
@@ -83,3 +85,5 @@ main() {
 
     return 0
 }
+
+main

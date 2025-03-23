@@ -271,8 +271,9 @@ main(){
     #install_java
     # install_rust
 
-    #install_tmux_sessions
+    install_tmux_sessions
 
+    # Always this last
     install_dotfiles
 }
 
