@@ -212,6 +212,26 @@ install_java(){
     fi
 }
 
+install_docker_files(){
+    write_log "Copying docker files"
+
+    chmod +x ./Dockerfiles/install.sh
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        ./Dockerfiles/install.sh -t
+    else
+        ./Dockerfiles/install.sh
+    fi
+
+    if [ $? -eq 0 ]; then
+        write_log "Copying docker files done"
+        return 0
+    else
+        write_error "Failed to copy docker files done"
+        return 1
+    fi
+}
+
 install_tmux_sessions(){
     write_log "Installing tmux sessions"
 
@@ -265,16 +285,19 @@ main(){
         return 1
     fi
 
-    install_docker
-    install_node
-    install_python
-    install_java
-    install_rust
+    #install_docker
+    #install_node
+    #install_python
+    #install_java
+    #install_rust
 
-    install_tmux_sessions
+    install_docker_files
+    #install_tmux_sessions
 
     # Always this last
-    install_dotfiles
+    #install_dotfiles
+
+    source ~/.bashrc
 }
 
 main
