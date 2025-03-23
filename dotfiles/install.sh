@@ -67,14 +67,14 @@ parse_args(){
 main() {
     local current_dir=${PWD}
 
-    mkdir -p "tmux-sessions"
+    rm -rf "${PWD}/dotfiles/repo"
+    mkdir -p "${PWD}/dotfiles/repo"
 
-    cd tmux-sessions
+    cd "${PWD}/dotfiles/repo"
 
-    rm -rf ./*
+    git clone https://github.com/ChristopherHommel/dotfiles.git
 
-    git clone https://github.com/ChristopherHommel/tmux-sessions.git .
-
+    cd dotfiles
     chmod +x ./install.sh
 
     ./install.sh
@@ -83,3 +83,5 @@ main() {
 
     return 0
 }
+
+main
