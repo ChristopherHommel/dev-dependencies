@@ -71,8 +71,8 @@ install_main_dependencies(){
 
     sudo dpkg --configure -a
 
-    sudo apt update
-    sudo apt full-upgrade
+    sudo apt update -y
+    sudo apt full-upgrade -y
 
     sudo apt install -y parallel \
         git \
@@ -91,6 +91,7 @@ install_main_dependencies(){
         tree \
         ripgrep \
         fzf \
+        bat \
         nmap \
         zip \
         htop \
@@ -272,6 +273,21 @@ install_dotfiles(){
     fi
 }
 
+tmux_start(){
+    # Load tmux if it exists
+    # Yes this will run it twice, the first time is without dotfiles loaded
+    if [ -f ~/dev-dependencies/tmux_sessions/repo/tmux-sessions/run.sh ]; then
+
+        cd ~/dev-dependencies/tmux_sessions/repo/tmux-sessions/
+        chmod +x ./run.sh
+        ./run.sh
+
+        cd $HOME
+
+        tmux a
+    fi
+}
+
 main(){
     write_log "======== Starting Dev Environment Setup ========"
     write_log "Date: $(date)"
@@ -285,19 +301,20 @@ main(){
         return 1
     fi
 
-    install_docker
-    install_node
-    install_python
-    install_java
-    install_rust
+    #install_docker
+    #install_node
+    #install_python
+    #install_java
+    #install_rust
 
-    install_docker_files
+    #install_docker_files
     install_tmux_sessions
 
     # Always this last
     install_dotfiles
-
     source ~/.bashrc
+
+    tmux_start
 }
 
 main
