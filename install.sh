@@ -85,6 +85,26 @@ run_install_step(){
     return 1
 }
 
+run_child_installer(){
+    local script_path="$1"
+
+    if [ ! -f "$script_path" ]; then
+        write_error "Installer script not found: $script_path"
+        return 1
+    fi
+
+    if ! chmod +x "$script_path"; then
+        write_error "Failed to make installer executable: $script_path"
+        return 1
+    fi
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        "$script_path" -t
+    else
+        "$script_path"
+    fi
+}
+
 install_main_dependencies(){
     write_log "Installing main dependencies"
 
@@ -135,241 +155,157 @@ install_main_dependencies(){
 install_docker(){
     write_log "Installing Docker"
 
-    chmod +x ./docker/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./docker/install.sh -t
-    else
-        ./docker/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./docker/install.sh"; then
         write_log "Docker installed"
         return 0
-    else
-        write_error "Failed to install Docker"
-        return 1
     fi
+
+    write_error "Failed to install Docker"
+    return 1
 }
 
 install_node(){
     write_log "Installing Node.js environment"
 
-    chmod +x ./node/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./node/install.sh -t
-    else
-        ./node/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./node/install.sh"; then
         write_log "Node.js environment installed"
         return 0
-    else
-        write_error "Failed to install Node.js environment"
-        return 1
     fi
+
+    write_error "Failed to install Node.js environment"
+    return 1
 }
 
 install_python(){
     write_log "Installing a Python environment"
 
-    chmod +x ./python/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./python/install.sh -t
-    else
-        ./python/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./python/install.sh"; then
         write_log "Python environment installed"
         return 0
-    else
-        write_error "Failed to install a Python environment"
-        return 1
     fi
+
+    write_error "Failed to install a Python environment"
+    return 1
 }
 
 install_rust(){
     write_log "Installing Rust environment"
 
-    chmod +x ./rust/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./rust/install.sh -t
-    else
-        ./rust/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./rust/install.sh"; then
         write_log "Rust environment installed"
         return 0
-    else
-        write_error "Failed to install Rust environment"
-        return 1
     fi
+
+    write_error "Failed to install Rust environment"
+    return 1
 }
 
 install_java(){
     write_log "Installing Java environment"
 
-    chmod +x ./java/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./java/install.sh -t
-    else
-        ./java/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./java/install.sh"; then
         write_log "Java environment installed"
         return 0
-    else
-        write_error "Failed to install Java environment"
-        return 1
     fi
+
+    write_error "Failed to install Java environment"
+    return 1
 }
 
 install_nvim(){
     write_log "Installing Neovim environment"
 
-    chmod +x ./nvim/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./nvim/install.sh -t
-    else
-        ./nvim/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./nvim/install.sh"; then
         write_log "Neovim environment installed"
         return 0
-    else
-        write_error "Failed to install Neovim environment"
-        return 1
     fi
+
+    write_error "Failed to install Neovim environment"
+    return 1
+}
+
+install_ghostty(){
+    write_log "Installing Ghostty terminal"
+
+    if run_child_installer "./ghostty/install.sh"; then
+        write_log "Ghostty terminal installed"
+        return 0
+    fi
+
+    write_error "Failed to install Ghostty terminal"
+    return 1
 }
 
 install_zig(){
     write_log "Installing Zig environment"
 
-    chmod +x ./zig/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./zig/install.sh -t
-    else
-        ./zig/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./zig/install.sh"; then
         write_log "Zig environment installed"
         return 0
-    else
-        write_error "Failed to install Zig environment"
-        return 1
     fi
+
+    write_error "Failed to install Zig environment"
+    return 1
 }
 
 install_bun(){
     write_log "Installing Bun environment"
 
-    chmod +x ./bun/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./bun/install.sh -t
-    else
-        ./bun/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./bun/install.sh"; then
         write_log "Bun environment installed"
         return 0
-    else
-        write_error "Failed to install Bun environment"
-        return 1
     fi
+
+    write_error "Failed to install Bun environment"
+    return 1
 }
 
 install_typescript(){
     write_log "Installing TypeScript environment"
 
-    chmod +x ./typescript/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./typescript/install.sh -t
-    else
-        ./typescript/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./typescript/install.sh"; then
         write_log "TypeScript environment installed"
         return 0
-    else
-        write_error "Failed to install TypeScript environment"
-        return 1
     fi
+
+    write_error "Failed to install TypeScript environment"
+    return 1
 }
 
 install_docker_files(){
     write_log "Copying docker files"
 
-    chmod +x ./Dockerfiles/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./Dockerfiles/install.sh -t
-    else
-        ./Dockerfiles/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./Dockerfiles/install.sh"; then
         write_log "Copying docker files done"
         return 0
-    else
-        write_error "Failed to copy docker files done"
-        return 1
     fi
+
+    write_error "Failed to copy docker files done"
+    return 1
 }
 
 install_tmux_sessions(){
     write_log "Installing tmux sessions"
 
-    chmod +x ./tmux_sessions/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./tmux_sessions/install.sh -t
-    else
-        ./tmux_sessions/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./tmux_sessions/install.sh"; then
         write_log "Tmux sessions done"
         return 0
-    else
-        write_error "Failed to load tmux sessions"
-        return 1
     fi
+
+    write_error "Failed to load tmux sessions"
+    return 1
 }
 
 install_dotfiles(){
     write_log "Installing dotfiles"
 
-    chmod +x ./dotfiles/install.sh
-
-    if [ $PIPE_TO_FILE -eq 1 ]; then
-        ./dotfiles/install.sh -t
-    else
-        ./dotfiles/install.sh
-    fi
-
-    if [ $? -eq 0 ]; then
+    if run_child_installer "./dotfiles/install.sh"; then
         write_log "Dotfiles done"
         return 0
-    else
-        write_error "Failed to load dotfiles"
-        return 1
     fi
+
+    write_error "Failed to load dotfiles"
+    return 1
 }
 
 remove_script_execute_permissions(){
@@ -425,6 +361,7 @@ main(){
     run_install_step "Rust" install_rust
     run_install_step "Zig" install_zig
     run_install_step "Neovim" install_nvim
+    run_install_step "Ghostty" install_ghostty
 
     run_install_step "Dockerfile examples" install_docker_files
     run_install_step "Tmux sessions" install_tmux_sessions
