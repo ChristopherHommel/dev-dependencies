@@ -68,6 +68,15 @@ parse_args "$@"
 
 INSTALL_FAILURES=0
 
+ensure_not_root(){
+    if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+        write_error "Do not run this installer with sudo; run 'bash install.sh' as your normal user. The script uses sudo only for system-level steps."
+        return 1
+    fi
+
+    return 0
+}
+
 run_install_step(){
     local step_name="$1"
     local step_function="$2"
@@ -236,6 +245,18 @@ install_ghostty(){
     return 1
 }
 
+install_samba(){
+    write_log "Installing Samba share"
+
+    if run_child_installer "./samba/install.sh"; then
+        write_log "Samba share installed"
+        return 0
+    fi
+
+    write_error "Failed to install Samba share"
+    return 1
+}
+
 install_zig(){
     write_log "Installing Zig environment"
 
@@ -315,6 +336,12 @@ remove_script_execute_permissions(){
 
     shopt -s globstar nullglob
     for script in ./*.sh ./**/*.sh; do
+        case "$script" in
+            */repo/*)
+                continue
+                ;;
+        esac
+
         if [ -f "$script" ]; then
             if ! chmod -x "$script"; then
                 write_error "Failed to remove execute permission from $script"
@@ -345,6 +372,10 @@ tmux_start(){
 }
 
 main(){
+    if ! ensure_not_root; then
+        return 1
+    fi
+
     write_log "======== Starting Dev Environment Setup ========"
     write_log "Date: $(date)"
     write_log "User: $(whoami)"
@@ -362,6 +393,7 @@ main(){
     run_install_step "Zig" install_zig
     run_install_step "Neovim" install_nvim
     run_install_step "Ghostty" install_ghostty
+    run_install_step "Samba" install_samba
 
     run_install_step "Dockerfile examples" install_docker_files
     run_install_step "Tmux sessions" install_tmux_sessions

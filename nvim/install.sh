@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Installs Neovim and a Lua-based development configuration
+# Installs the latest official Neovim release and a Lua-based development configuration
 #
 # Usage:
 #     ./install.sh <-t> <-?>
@@ -71,7 +71,16 @@ check_nvim_version(){
     local current_version
     local lowest_version
 
+    if ! command -v nvim >/dev/null 2>&1; then
+        return 1
+    fi
+
     current_version=$(nvim --version | sed -n 's/^NVIM v//p' | head -n 1)
+    if [ -z "$current_version" ]; then
+        write_error "Unable to detect Neovim version"
+        return 1
+    fi
+
     lowest_version=$(printf '%s\n%s\n' "$required_version" "$current_version" | sort -V | head -n 1)
 
     if [ "$lowest_version" != "$required_version" ]; then
@@ -79,6 +88,117 @@ check_nvim_version(){
         return 1
     fi
 
+    return 0
+}
+
+check_nvim_binary_version(){
+    local nvim_binary="$1"
+    local required_version="0.9.0"
+    local current_version
+    local lowest_version
+
+    if [ ! -x "$nvim_binary" ]; then
+        return 1
+    fi
+
+    current_version=$("$nvim_binary" --version | sed -n 's/^NVIM v//p' | head -n 1)
+    if [ -z "$current_version" ]; then
+        return 1
+    fi
+
+    lowest_version=$(printf '%s\n%s\n' "$required_version" "$current_version" | sort -V | head -n 1)
+    [ "$lowest_version" = "$required_version" ]
+}
+
+link_user_nvim(){
+    local nvim_binary
+
+    if [ -x /usr/local/bin/nvim ] && check_nvim_binary_version /usr/local/bin/nvim; then
+        nvim_binary="/usr/local/bin/nvim"
+    else
+        nvim_binary=$(command -v nvim)
+    fi
+
+    if [ -z "$nvim_binary" ]; then
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    ln -sfn "$nvim_binary" "$HOME/.local/bin/nvim"
+
+    if ! grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc" 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    fi
+}
+
+warn_about_stale_system_nvim(){
+    if [ -x /usr/bin/nvim ] && ! check_nvim_binary_version /usr/bin/nvim; then
+        write_log "/usr/bin/nvim is older than this config supports; use $(command -v nvim) or ensure /usr/local/bin or ~/.local/bin appears before /usr/bin in PATH"
+    fi
+}
+
+install_official_nvim(){
+    local arch
+    local asset_name
+    local install_dir
+    local temp_dir
+    local url
+
+    case "$(uname -m)" in
+        x86_64)
+            asset_name="nvim-linux-x86_64"
+            ;;
+        aarch64|arm64)
+            asset_name="nvim-linux-arm64"
+            ;;
+        *)
+            write_error "Unsupported CPU architecture for official Neovim install: $(uname -m)"
+            return 1
+            ;;
+    esac
+
+    install_dir="/opt/$asset_name"
+    url="https://github.com/neovim/neovim/releases/latest/download/$asset_name.tar.gz"
+    temp_dir=$(mktemp -d)
+
+    if [ -z "$temp_dir" ]; then
+        write_error "Failed to create temporary directory for Neovim download"
+        return 1
+    fi
+
+    write_log "Installing official Neovim release from $url"
+    if ! curl -fL "$url" -o "$temp_dir/nvim.tar.gz"; then
+        write_error "Failed to download official Neovim release"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    if ! sudo rm -rf "$install_dir"; then
+        write_error "Failed to remove previous Neovim install at $install_dir"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    if ! sudo tar -C /opt -xzf "$temp_dir/nvim.tar.gz"; then
+        write_error "Failed to extract official Neovim release"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    if [ ! -x "$install_dir/bin/nvim" ]; then
+        write_error "Official Neovim binary was not found at $install_dir/bin/nvim"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    if ! sudo ln -sfn "$install_dir/bin/nvim" /usr/local/bin/nvim; then
+        write_error "Failed to link official Neovim to /usr/local/bin/nvim"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+
+    hash -r
+    rm -rf "$temp_dir"
     return 0
 }
 
@@ -99,27 +219,40 @@ main(){
         return 1
     fi
 
-    sudo apt update
+    if ! sudo apt update; then
+        write_error "Failed to update apt package lists"
+        return 1
+    fi
 
-    write_log "Installing Neovim and supporting tools"
-    sudo apt install -y \
-        neovim \
+    write_log "Installing Neovim supporting tools"
+    if ! sudo apt install -y \
         git \
         curl \
+        ca-certificates \
+        tar \
+        gzip \
         unzip \
         ripgrep \
         fd-find \
-        build-essential
-
-    if ! command -v nvim >/dev/null 2>&1; then
-        write_error "Neovim was not found after installation"
+        build-essential; then
+        write_error "Failed to install Neovim supporting tools"
         return 1
     fi
 
-    check_nvim_version
-    if [ $? -ne 0 ]; then
+    if ! install_official_nvim; then
         return 1
     fi
+
+    if ! check_nvim_version; then
+        return 1
+    fi
+
+    if ! link_user_nvim; then
+        write_error "Failed to link Neovim into ~/.local/bin"
+        return 1
+    fi
+
+    warn_about_stale_system_nvim
 
     mkdir -p "$HOME/.config"
 

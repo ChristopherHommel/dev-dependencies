@@ -66,6 +66,28 @@ parse_args(){
 
 parse_args "$@"
 
+target_home(){
+    local home_dir
+
+    if [ "${EUID:-$(id -u)}" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+        home_dir=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        if [ -n "$home_dir" ]; then
+            echo "$home_dir"
+            return 0
+        fi
+    fi
+
+    echo "$HOME"
+}
+
+chown_target_user(){
+    local path="$1"
+
+    if [ "${EUID:-$(id -u)}" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+        chown -R "$SUDO_USER:$SUDO_USER" "$path"
+    fi
+}
+
 main(){
     local script_dir
     local source_dir
@@ -73,7 +95,7 @@ main(){
 
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     source_dir="$script_dir/examples"
-    target_dir="$HOME/Dockerfiles"
+    target_dir="$(target_home)/Dockerfiles"
 
     if [ ! -d "$source_dir" ]; then
         write_error "Dockerfile examples not found at $source_dir"
@@ -82,6 +104,7 @@ main(){
 
     mkdir -p "$target_dir"
     cp -R "$source_dir"/. "$target_dir"/
+    chown_target_user "$target_dir"
 
     write_log "Dockerfile examples copied to $target_dir"
 
