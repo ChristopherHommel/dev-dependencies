@@ -77,6 +77,55 @@ ensure_not_root(){
     return 0
 }
 
+ensure_group(){
+    local group="$1"
+
+    if getent group "$group" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    write_log "Creating group $group"
+    if ! sudo groupadd "$group"; then
+        write_error "Failed to create group $group"
+        return 1
+    fi
+
+    return 0
+}
+
+ensure_user_in_group(){
+    local user="$1"
+    local group="$2"
+
+    if id -nG "$user" | tr ' ' '\n' | grep -Fxq "$group"; then
+        return 0
+    fi
+
+    write_log "Adding $user to group $group"
+    if ! sudo usermod -aG "$group" "$user"; then
+        write_error "Failed to add $user to group $group"
+        return 1
+    fi
+
+    return 0
+}
+
+configure_user_group(){
+    local user
+
+    user=$(id -un)
+
+    if ! ensure_group "$user"; then
+        return 1
+    fi
+
+    if ! ensure_user_in_group "$user" "$user"; then
+        return 1
+    fi
+
+    return 0
+}
+
 run_install_step(){
     local step_name="$1"
     local step_function="$2"
@@ -144,8 +193,9 @@ install_main_dependencies(){
         zip \
         htop \
         sed \
-        awk \
+        gawk \
         xargs \
+	bat \
         openssh-server \
         openssh-client
 
@@ -356,19 +406,25 @@ remove_script_execute_permissions(){
     return 0
 }
 
-tmux_start(){
-    # Load tmux if it exists
-    # Yes this will run it twice, the first time is without dotfiles loaded
-    if [ -f ~/dev-dependencies/tmux_sessions/repo/tmux-sessions/run.sh ]; then
-
-        cd ~/dev-dependencies/tmux_sessions/repo/tmux-sessions/
-        chmod +x ./run.sh
-        ./run.sh
-
-        cd $HOME
-
-        tmux a
+launch_ghostty(){
+    if ! command -v ghostty >/dev/null 2>&1; then
+        write_log "Ghostty is not available on PATH; skipping terminal launch"
+        return 0
     fi
+
+    if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+        write_log "No graphical session detected; skipping Ghostty launch"
+        return 0
+    fi
+
+    write_log "Launching Ghostty"
+    if command -v setsid >/dev/null 2>&1; then
+        setsid ghostty >/dev/null 2>&1 &
+    else
+        nohup ghostty >/dev/null 2>&1 &
+    fi
+
+    return 0
 }
 
 main(){
@@ -382,6 +438,7 @@ main(){
     write_log "System: $(uname -a)"
     write_log "================================================"
 
+    run_install_step "User group" configure_user_group
     run_install_step "Main dependencies" install_main_dependencies
     run_install_step "Docker" install_docker
     run_install_step "Node.js" install_node
@@ -406,7 +463,7 @@ main(){
         source ~/.bashrc
     fi
 
-    tmux_start
+    launch_ghostty
 
     if [ $INSTALL_FAILURES -ne 0 ]; then
         write_error "$INSTALL_FAILURES install step(s) failed"

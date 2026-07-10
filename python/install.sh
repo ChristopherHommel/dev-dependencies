@@ -88,18 +88,8 @@ main(){
     write_log "Installing commonly used Python packages"
     pip3 install --user numpy pandas matplotlib jupyter requests pytest pytest-cov black flake8 mypy isort pylint poetry
 
-    if [ -d "$HOME/python-projects" ]; then
-        rm -rf "$HOME/python-projects"
-    fi
-
-    write_log "Setting up a virtual environment for projects"
-    mkdir -p ~/python-projects
-    cd ~/python-projects
-    python3 -m venv venv
-    write_log "Created virtual environment at ~/python-projects/venv"
-
-    write_log "Creating an example project structure"
-    mkdir -p ~/python-projects/example-project/{src,tests,docs}
+    write_log "Ensuring shared projects directory exists"
+    mkdir -p "$HOME/projects"
 
     write_log "Python development environment setup complete"
     write_log "You may need to restart your terminal or run 'source ~/.bashrc' to apply all changes"

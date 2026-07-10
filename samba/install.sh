@@ -149,6 +149,39 @@ configure_samba_user(){
     return 0
 }
 
+ensure_group(){
+    local group="$1"
+
+    if getent group "$group" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    write_log "Creating group $group"
+    if ! sudo groupadd "$group"; then
+        write_error "Failed to create group $group"
+        return 1
+    fi
+
+    return 0
+}
+
+ensure_user_in_group(){
+    local user="$1"
+    local group="$2"
+
+    if id -nG "$user" | tr ' ' '\n' | grep -Fxq "$group"; then
+        return 0
+    fi
+
+    write_log "Adding $user to group $group"
+    if ! sudo usermod -aG "$group" "$user"; then
+        write_error "Failed to add $user to group $group"
+        return 1
+    fi
+
+    return 0
+}
+
 share_exists(){
     sudo awk -v share="$SHARE_NAME" '
         BEGIN { target = tolower(share) }
@@ -216,17 +249,53 @@ EOF
 prepare_share_directory(){
     local user="$1"
     local share_path="$2"
+    local keys_path="$3"
+    local group="$user"
 
-    mkdir -p "$share_path"
-    chmod 775 "$share_path"
+    if ! id "$user" >/dev/null 2>&1; then
+        write_error "System user does not exist: $user"
+        return 1
+    fi
 
-    if ! sudo chown "$user:$user" "$share_path"; then
+    if ! ensure_group "$group"; then
+        return 1
+    fi
+
+    if ! ensure_user_in_group "$user" "$group"; then
+        return 1
+    fi
+
+    if ! ensure_group sambashare; then
+        return 1
+    fi
+
+    if ! ensure_user_in_group "$user" sambashare; then
+        return 1
+    fi
+
+    if ! sudo mkdir -p "$share_path" "$keys_path"; then
+        write_error "Failed to create $share_path or $keys_path"
+        return 1
+    fi
+
+    if ! sudo chown "$user:$group" "$share_path"; then
         write_error "Failed to set owner on $share_path"
         return 1
     fi
 
-    if getent group sambashare >/dev/null 2>&1; then
-        sudo usermod -aG sambashare "$user" || true
+    if ! sudo chown "$user:$group" "$keys_path"; then
+        write_error "Failed to set owner on $keys_path"
+        return 1
+    fi
+
+    if ! sudo chmod 775 "$share_path"; then
+        write_error "Failed to set permissions on $share_path"
+        return 1
+    fi
+
+    if ! sudo chmod 700 "$keys_path"; then
+        write_error "Failed to set permissions on $keys_path"
+        return 1
     fi
 
     return 0
@@ -257,10 +326,12 @@ main(){
     local user
     local home_dir
     local share_path
+    local keys_path
 
     user=$(target_user)
     home_dir=$(target_home "$user")
     share_path="$home_dir/projects"
+    keys_path="$home_dir/keys"
 
     write_log "Setting up Samba share [$SHARE_NAME] at $share_path for $user"
 
@@ -268,7 +339,7 @@ main(){
         return 1
     fi
 
-    if ! prepare_share_directory "$user" "$share_path"; then
+    if ! prepare_share_directory "$user" "$share_path" "$keys_path"; then
         return 1
     fi
 

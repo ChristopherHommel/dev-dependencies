@@ -202,6 +202,17 @@ install_official_nvim(){
     return 0
 }
 
+sync_lazy_plugins(){
+    write_log "Installing and updating Neovim plugins with lazy.nvim"
+
+    if ! nvim --headless "+Lazy! sync" "+qa"; then
+        write_error "Failed to install or update Neovim plugins"
+        return 1
+    fi
+
+    return 0
+}
+
 main(){
     local script_dir
     local source_dir
@@ -269,8 +280,11 @@ main(){
     mkdir -p "$target_dir"
     cp -R "$source_dir"/. "$target_dir"/
 
+    if ! sync_lazy_plugins; then
+        return 1
+    fi
+
     write_log "Neovim config installed to $target_dir"
-    write_log "Open Neovim and run ':Lazy sync' if plugins do not install automatically"
 
     return 0
 }
