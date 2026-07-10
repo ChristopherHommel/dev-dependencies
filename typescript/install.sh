@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Pulls down default docker files for different environments
+# Installs TypeScript tooling through npm
 #
 # Usage:
 #     ./install.sh <-t> <-?>
@@ -10,7 +10,7 @@
 #
 # +------------------------------------------------------+
 # | Who          | Date       | Version | Comments       |
-# | Chris Hommel | 23-03-2025 | 1       | Initial set up |
+# | Chris Hommel | 10-07-2026 | 1       | Initial set up |
 # |              |            |         |                |
 # |              |            |         |                |
 # |              |            |         |                |
@@ -20,7 +20,7 @@
 # +------------------------------------------------------+
 
 PIPE_TO_FILE=0
-LOG_FILE="./install-log.txt"
+LOG_FILE="./install-typescript-log.txt"
 
 write_options(){
     write_log "Options:"
@@ -30,7 +30,7 @@ write_options(){
 
 write_log(){
     if [ $PIPE_TO_FILE -eq 1 ]; then
-        echo "$1" | tee -a "$LOG_FILE"
+        echo "$1" >> "$LOG_FILE"
     else
         echo "$1"
     fi
@@ -48,8 +48,8 @@ parse_args(){
     for arg in "$@"; do
         case "$arg" in
             -t)
-            write_log "Pipe to file turned on, writing to $LOG_FILE"
             PIPE_TO_FILE=1
+            write_log "Pipe to file turned on, writing to $LOG_FILE"
             ;;
             -?)
             write_options
@@ -67,23 +67,31 @@ parse_args(){
 parse_args "$@"
 
 main(){
-    local script_dir
-    local source_dir
-    local target_dir
+    write_log "Setting up TypeScript tooling"
 
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source_dir="$script_dir/examples"
-    target_dir="$HOME/Dockerfiles"
+    export NVM_DIR="$HOME/.nvm"
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        . "$NVM_DIR/nvm.sh"
+    fi
 
-    if [ ! -d "$source_dir" ]; then
-        write_error "Dockerfile examples not found at $source_dir"
+    if ! command -v npm >/dev/null 2>&1; then
+        write_error "npm is required for TypeScript tooling; install Node.js first"
         return 1
     fi
 
-    mkdir -p "$target_dir"
-    cp -R "$source_dir"/. "$target_dir"/
+    if ! npm install -g typescript ts-node eslint prettier; then
+        write_error "Failed to install TypeScript npm packages"
+        return 1
+    fi
 
-    write_log "Dockerfile examples copied to $target_dir"
+    if ! command -v tsc >/dev/null 2>&1; then
+        write_error "TypeScript compiler was not found after installation"
+        return 1
+    fi
+
+    tsc --version
+
+    write_log "TypeScript tooling setup complete"
 
     return 0
 }

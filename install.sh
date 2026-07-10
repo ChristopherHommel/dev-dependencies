@@ -66,6 +66,25 @@ parse_args(){
 
 parse_args "$@"
 
+INSTALL_FAILURES=0
+
+run_install_step(){
+    local step_name="$1"
+    local step_function="$2"
+
+    write_log "-------- $step_name --------"
+
+    "$step_function"
+    if [ $? -eq 0 ]; then
+        write_log "$step_name completed"
+        return 0
+    fi
+
+    write_error "$step_name failed; continuing with next install"
+    INSTALL_FAILURES=$((INSTALL_FAILURES + 1))
+    return 1
+}
+
 install_main_dependencies(){
     write_log "Installing main dependencies"
 
@@ -213,6 +232,86 @@ install_java(){
     fi
 }
 
+install_nvim(){
+    write_log "Installing Neovim environment"
+
+    chmod +x ./nvim/install.sh
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        ./nvim/install.sh -t
+    else
+        ./nvim/install.sh
+    fi
+
+    if [ $? -eq 0 ]; then
+        write_log "Neovim environment installed"
+        return 0
+    else
+        write_error "Failed to install Neovim environment"
+        return 1
+    fi
+}
+
+install_zig(){
+    write_log "Installing Zig environment"
+
+    chmod +x ./zig/install.sh
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        ./zig/install.sh -t
+    else
+        ./zig/install.sh
+    fi
+
+    if [ $? -eq 0 ]; then
+        write_log "Zig environment installed"
+        return 0
+    else
+        write_error "Failed to install Zig environment"
+        return 1
+    fi
+}
+
+install_bun(){
+    write_log "Installing Bun environment"
+
+    chmod +x ./bun/install.sh
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        ./bun/install.sh -t
+    else
+        ./bun/install.sh
+    fi
+
+    if [ $? -eq 0 ]; then
+        write_log "Bun environment installed"
+        return 0
+    else
+        write_error "Failed to install Bun environment"
+        return 1
+    fi
+}
+
+install_typescript(){
+    write_log "Installing TypeScript environment"
+
+    chmod +x ./typescript/install.sh
+
+    if [ $PIPE_TO_FILE -eq 1 ]; then
+        ./typescript/install.sh -t
+    else
+        ./typescript/install.sh
+    fi
+
+    if [ $? -eq 0 ]; then
+        write_log "TypeScript environment installed"
+        return 0
+    else
+        write_error "Failed to install TypeScript environment"
+        return 1
+    fi
+}
+
 install_docker_files(){
     write_log "Copying docker files"
 
@@ -273,6 +372,27 @@ install_dotfiles(){
     fi
 }
 
+remove_script_execute_permissions(){
+    local script
+
+    write_log "Removing execute permissions from shell scripts"
+
+    shopt -s globstar nullglob
+    for script in ./*.sh ./**/*.sh; do
+        if [ -f "$script" ]; then
+            if ! chmod -x "$script"; then
+                write_error "Failed to remove execute permission from $script"
+                shopt -u globstar nullglob
+                return 1
+            fi
+        fi
+    done
+    shopt -u globstar nullglob
+
+    write_log "Removed execute permissions from shell scripts"
+    return 0
+}
+
 tmux_start(){
     # Load tmux if it exists
     # Yes this will run it twice, the first time is without dotfiles loaded
@@ -295,26 +415,37 @@ main(){
     write_log "System: $(uname -a)"
     write_log "================================================"
 
-    install_main_dependencies
-    if [ $? -ne 0 ]; then
-        write_error "Failed to install main dependencies"
+    run_install_step "Main dependencies" install_main_dependencies
+    run_install_step "Docker" install_docker
+    run_install_step "Node.js" install_node
+    run_install_step "TypeScript" install_typescript
+    run_install_step "Bun" install_bun
+    run_install_step "Python" install_python
+    run_install_step "Java" install_java
+    run_install_step "Rust" install_rust
+    run_install_step "Zig" install_zig
+    run_install_step "Neovim" install_nvim
+
+    run_install_step "Dockerfile examples" install_docker_files
+    run_install_step "Tmux sessions" install_tmux_sessions
+
+    # Always this last
+    run_install_step "Dotfiles" install_dotfiles
+    run_install_step "Remove shell script execute permissions" remove_script_execute_permissions
+
+    if [ -f ~/.bashrc ]; then
+        source ~/.bashrc
+    fi
+
+    tmux_start
+
+    if [ $INSTALL_FAILURES -ne 0 ]; then
+        write_error "$INSTALL_FAILURES install step(s) failed"
         return 1
     fi
 
-    install_docker
-    install_node
-    install_python
-    install_java
-    install_rust
-
-    install_docker_files
-    install_tmux_sessions
-
-    # Always this last
-    install_dotfiles
-    source ~/.bashrc
-
-    tmux_start
+    write_log "All install steps completed successfully"
+    return 0
 }
 
 main
