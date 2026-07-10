@@ -107,6 +107,15 @@ clone_or_update_repo(){
         fi
 
         write_log "Updating existing tmux-sessions clone"
+        if [ -n "$(git -C "$repo_dir" status --porcelain)" ]; then
+            backup_dir="$repo_dir.backup-$(date +%Y%m%d-%H%M%S)"
+            write_log "Moving modified tmux-sessions clone to $backup_dir"
+            mv "$repo_dir" "$backup_dir" || return 1
+            write_log "Cloning tmux-sessions"
+            git clone "$repo_url" "$repo_dir"
+            return $?
+        fi
+
         git -C "$repo_dir" pull --ff-only
         return $?
     fi
