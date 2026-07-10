@@ -112,16 +112,8 @@ main(){
     rustup target add x86_64-unknown-linux-musl
     rustup target add aarch64-unknown-linux-gnu
 
-    if [ -d "$HOME/rust-projects" ]; then
-        rm -rf "$HOME/rust-projects"
-    fi
-
-    mkdir -p ~/rust-projects
-    cd ~/rust-projects
-    cargo new sample-project
-    cd sample-project
-    cargo build
-    cargo init
+    write_log "Ensuring Rust projects directory exists"
+    mkdir -p "$HOME/rust-projects"
 
     write_log "Rust development environment setup complete!"
     write_log "You may need to restart your terminal or run 'source ~/.cargo/env' to apply all changes"

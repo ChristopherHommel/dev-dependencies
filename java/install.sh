@@ -91,14 +91,8 @@ main(){
     echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
     echo 'export PATH=$PATH:$JAVA_HOME/bin' >> ~/.bashrc
 
-
-    if [ -d "$HOME/spring-projects" ]; then
-        rm -rf "$HOME/spring-projects"
-    fi
-
-    mkdir -p ~/spring-projects
-    cd ~/spring-projects
-    spring init --dependencies=web,data-jpa,security,devtools sample-project
+    write_log "Ensuring Spring projects directory exists"
+    mkdir -p "$HOME/spring-projects"
 
     write_log "Java with Spring development environment setup complete"
     write_log "You may need to restart your terminal or run 'source ~/.bashrc' to apply all changes"

@@ -74,6 +74,7 @@ main(){
     local shasum
     local install_root="$HOME/.local/zig"
     local bin_dir="$HOME/.local/bin"
+    local backup_dir
     local temp_dir
 
     write_log "Setting up Zig development environment"
@@ -152,7 +153,25 @@ main(){
         return 1
     fi
 
-    rm -rf "$install_root/$zig_version"
+    if [ -e "$install_root/$zig_version" ]; then
+        backup_dir="$install_root/$zig_version.backup-$(date +%Y%m%d-%H%M%S)"
+
+        if [ -d "$install_root/$zig_version" ] && [ -z "$(find "$install_root/$zig_version" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            if ! rmdir "$install_root/$zig_version"; then
+                write_error "Failed to remove empty previous Zig install at $install_root/$zig_version"
+                rm -rf "$temp_dir"
+                return 1
+            fi
+        else
+            write_log "Backing up previous Zig install to $backup_dir"
+            mv "$install_root/$zig_version" "$backup_dir" || {
+                write_error "Failed to back up previous Zig install at $install_root/$zig_version"
+                rm -rf "$temp_dir"
+                return 1
+            }
+        fi
+    fi
+
     if ! mv "$temp_dir"/zig-* "$install_root/$zig_version"; then
         write_error "Failed to install Zig into $install_root/$zig_version"
         rm -rf "$temp_dir"

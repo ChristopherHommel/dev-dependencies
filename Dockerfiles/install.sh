@@ -103,10 +103,15 @@ main(){
     fi
 
     mkdir -p "$target_dir"
-    cp -R "$source_dir"/. "$target_dir"/
+
+    if ! cp -Rn "$source_dir"/. "$target_dir"/; then
+        write_error "Failed to copy Dockerfile examples to $target_dir"
+        return 1
+    fi
+
     chown_target_user "$target_dir"
 
-    write_log "Dockerfile examples copied to $target_dir"
+    write_log "Dockerfile examples copied to $target_dir without overwriting existing files"
 
     return 0
 }

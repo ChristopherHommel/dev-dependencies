@@ -104,14 +104,8 @@ main(){
     npm install -g create-react-app
     npm install -g express-generator
 
-    if [ -d "$HOME/node-projects" ]; then
-        rm -rf "$HOME/node-projects"
-    fi
-
-    mkdir -p ~/node-projects/sample-project
-    cd ~/node-projects/sample-project
-    npm init -y
-    npm install express dotenv cors
+    write_log "Ensuring Node.js projects directory exists"
+    mkdir -p "$HOME/node-projects"
 
     write_log "Node.js development environment setup complete"
     write_log "You may need to restart your terminal or run 'source ~/.bashrc' to apply all changes"

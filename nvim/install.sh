@@ -141,6 +141,7 @@ install_official_nvim(){
     local arch
     local asset_name
     local install_dir
+    local backup_dir
     local temp_dir
     local url
 
@@ -173,10 +174,23 @@ install_official_nvim(){
         return 1
     fi
 
-    if ! sudo rm -rf "$install_dir"; then
-        write_error "Failed to remove previous Neovim install at $install_dir"
-        rm -rf "$temp_dir"
-        return 1
+    if [ -e "$install_dir" ]; then
+        backup_dir="$install_dir.backup-$(date +%Y%m%d-%H%M%S)"
+
+        if [ -d "$install_dir" ] && [ -z "$(sudo find "$install_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            if ! sudo rmdir "$install_dir"; then
+                write_error "Failed to remove empty previous Neovim install at $install_dir"
+                rm -rf "$temp_dir"
+                return 1
+            fi
+        else
+            write_log "Backing up previous Neovim install to $backup_dir"
+            if ! sudo mv "$install_dir" "$backup_dir"; then
+                write_error "Failed to back up previous Neovim install at $install_dir"
+                rm -rf "$temp_dir"
+                return 1
+            fi
+        fi
     fi
 
     if ! sudo tar -C /opt -xzf "$temp_dir/nvim.tar.gz"; then
@@ -267,14 +281,21 @@ main(){
 
     mkdir -p "$HOME/.config"
 
-    if [ -e "$target_dir" ] && [ ! -f "$target_dir/.dev-dependencies-nvim" ]; then
-        backup_dir="$target_dir.backup-$(date +%Y%m%d-%H%M%S)"
-        write_log "Backing up existing Neovim config to $backup_dir"
-        mv "$target_dir" "$backup_dir"
-    fi
-
     if [ -e "$target_dir" ]; then
-        rm -rf "$target_dir"
+        backup_dir="$target_dir.backup-$(date +%Y%m%d-%H%M%S)"
+
+        if [ -d "$target_dir" ] && [ -z "$(find "$target_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            if ! rmdir "$target_dir"; then
+                write_error "Failed to remove empty Neovim config directory at $target_dir"
+                return 1
+            fi
+        else
+            write_log "Backing up existing Neovim config to $backup_dir"
+            if ! mv "$target_dir" "$backup_dir"; then
+                write_error "Failed to back up existing Neovim config at $target_dir"
+                return 1
+            fi
+        fi
     fi
 
     mkdir -p "$target_dir"
