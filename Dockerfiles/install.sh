@@ -67,23 +67,23 @@ parse_args(){
 parse_args "$@"
 
 main(){
+    local script_dir
+    local source_dir
+    local target_dir
 
-    local current_dir=${PWD}
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source_dir="$script_dir/examples"
+    target_dir="$HOME/Dockerfiles"
 
-    rm -rf "${PWD}/Dockerfiles/repo"
-    mkdir -p "${PWD}/Dockerfiles/repo"
+    if [ ! -d "$source_dir" ]; then
+        write_error "Dockerfile examples not found at $source_dir"
+        return 1
+    fi
 
+    mkdir -p "$target_dir"
+    cp -R "$source_dir"/. "$target_dir"/
 
-    cd "${PWD}/Dockerfiles/repo"
-
-    git clone https://github.com/ChristopherHommel/Dockerfiles.git
-
-    cd Dockerfiles
-
-    mkdir -p ~/Dockerfiles
-    cp -r ./* ~/Dockerfiles/
-
-    cd "$current_dir"
+    write_log "Dockerfile examples copied to $target_dir"
 
     return 0
 }
